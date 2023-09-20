@@ -348,12 +348,12 @@ class CIC(nn.Module):
 
         self.lpfa = LPFA(planes, planes, k, mlp_num=mlp_num, initial=False)
 
-    def forward(self, xyz, x):
+    def forward(self, xyz, x, npoint=None):
  
         # max pool
         if xyz.size(-1) != self.npoint:
             xyz, x = self.maxpool(
-                xyz.transpose(1, 2).contiguous(), x)
+                xyz.transpose(1, 2).contiguous(), x, npoint=npoint)
             xyz = xyz.transpose(1, 2)
 
         shortcut = x
@@ -477,8 +477,9 @@ class MaskedMaxPool(nn.Module):
         self.radius = radius
         self.k = k
 
-    def forward(self, xyz, features):
-        sub_xyz, neighborhood_features = sample_and_group(self.npoint, self.radius, self.k, xyz, features.transpose(1,2))
+    def forward(self, xyz, features, npoint=None):
+        npoint = npoint if npoint is not None else self.npoint
+        sub_xyz, neighborhood_features = sample_and_group(npoint, self.radius, self.k, xyz, features.transpose(1,2))
 
         neighborhood_features = neighborhood_features.permute(0, 3, 1, 2).contiguous()
         sub_features = F.max_pool2d(

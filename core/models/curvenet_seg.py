@@ -7,7 +7,7 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
-from .curvenet_util import *
+from third_party.CurveNet.core.models.curvenet_util import *
 
 
 curve_config = {
@@ -77,11 +77,12 @@ class CurveNet(nn.Module):
                                 
     def forward(self, xyz, l=None):
         batch_size = xyz.size(0)
+        npoint = xyz.size(2)
 
         l0_points = self.lpfa(xyz, xyz)
 
-        l1_xyz, l1_points = self.cic11(xyz, l0_points)
-        l1_xyz, l1_points = self.cic12(l1_xyz, l1_points)
+        l1_xyz, l1_points = self.cic11(xyz, l0_points, npoint)
+        l1_xyz, l1_points = self.cic12(l1_xyz, l1_points, npoint)
 
         l2_xyz, l2_points = self.cic21(l1_xyz, l1_points)
         l2_xyz, l2_points = self.cic22(l2_xyz, l2_points)
@@ -117,11 +118,13 @@ class CurveNet(nn.Module):
         if l is not None:
             l = l.view(batch_size, -1, 1)
             emb = torch.cat((emb1, emb2, l), dim=1) # bs, 128 + 16, 1
+        else:
+            emb = torch.cat((emb1, emb2), dim=1) # bs, 128 + 16, 1
         l = emb.expand(-1,-1, xyz.size(-1))
         x = torch.cat((l1_xyz, l1_points, l), dim=1)
 
-        xyz, x = self.up_cic2(l1_xyz, x)
-        xyz, x = self.up_cic1(xyz, x)
+        xyz, x = self.up_cic2(l1_xyz, x, npoint)
+        xyz, x = self.up_cic1(xyz, x, npoint)
 
         x =  F.leaky_relu(self.bn1(self.conv1(x)), 0.2, inplace=True)
         se = self.se(x)
