@@ -463,8 +463,8 @@ class CurveGrouping(nn.Module):
                                     self.curve_num,
                                     dim=2,
                                     sorted=False)
-        start_index = start_index.squeeze().unsqueeze(2)
-
+        B = start_index.size(0)
+        start_index = start_index.view(B, -1).unsqueeze(2)
         curves = self.walk(xyz, x, idx, start_index)  #bs, c, c_n, c_l
         
         return curves
